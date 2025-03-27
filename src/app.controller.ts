@@ -16,10 +16,33 @@ import {
 } from './auth';
 import { User } from './users';
 import { AppRequest } from './shared';
+import { PrismaService } from './prisma/prisma.service';
 
 @Controller()
 export class AppController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private readonly prismaService: PrismaService,
+  ) {}
+
+  @Get('test-db')
+  async testConnection() {
+    try {
+      // Try to create a test record
+      const result = await this.prismaService.testConnection.create({
+        data: {},
+      });
+      return {
+        status: 'Connected successfully!',
+        testRecord: result,
+      };
+    } catch (error) {
+      return {
+        status: 'Connection failed',
+        error: error.message,
+      };
+    }
+  }
 
   @Get(['', 'ping'])
   healthCheck() {
