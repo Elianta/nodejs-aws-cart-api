@@ -55,7 +55,7 @@ export class AppController {
   @Post('api/auth/register')
   @HttpCode(HttpStatus.CREATED)
   // TODO ADD validation
-  register(@Body() body: User) {
+  async register(@Body() body: User) {
     return this.authService.register(body);
   }
 

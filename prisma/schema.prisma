@@ -42,3 +42,14 @@ model TestConnection {
 
   @@map("test_connections")
 }
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  email     String?
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
