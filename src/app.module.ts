@@ -9,7 +9,14 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaService } from './prisma/prisma.service';
 
 @Module({
-  imports: [AuthModule, CartModule, OrderModule, ConfigModule.forRoot()],
+  imports: [
+    AuthModule,
+    CartModule,
+    OrderModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+  ],
   controllers: [AppController],
   providers: [PrismaService],
 })
