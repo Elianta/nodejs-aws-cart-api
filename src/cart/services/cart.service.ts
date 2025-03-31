@@ -5,7 +5,7 @@ import { PutCartPayload } from 'src/order/type';
 import { PrismaService } from '../../prisma/prisma.service';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { CartItem as PrismaCartItem } from '@prisma/client';
+import { CartStatus, CartItem as PrismaCartItem } from '@prisma/client';
 
 @Injectable()
 export class CartService {
@@ -190,5 +190,16 @@ export class CartService {
         },
       });
     }
+  }
+
+  async updateStatus(cartId: string, status: CartStatuses) {
+    await this.prisma.cart.update({
+      where: {
+        id: cartId,
+      },
+      data: {
+        status: status as CartStatus,
+      },
+    });
   }
 }

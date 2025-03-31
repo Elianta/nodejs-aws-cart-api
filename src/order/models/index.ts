@@ -8,7 +8,7 @@ export type Order = {
   address: Address;
   statusHistory: Array<{
     status: OrderStatus.Open;
-    timestamp: number;
+    timestamp: Date;
     comment: string;
   }>;
 };

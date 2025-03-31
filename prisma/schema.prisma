@@ -25,6 +25,7 @@ model Cart {
   updated_at DateTime   @default(now())
   status     CartStatus @default(OPEN)
   cart_items CartItem[]
+  order      Order?
 
   @@map("carts")
 }
@@ -52,4 +53,32 @@ model User {
   updatedAt DateTime @updatedAt
 
   @@map("users")
+}
+
+enum OrderStatus {
+  OPEN
+  APPROVED
+  CONFIRMED
+  SENT
+  COMPLETED
+  CANCELLED
+
+  @@map("order_status")
+}
+
+model Order {
+  id       String      @id @default(uuid()) @db.Uuid
+  userId   String      @map("user_id") @db.Uuid
+  cartId   String      @unique @map("cart_id") @db.Uuid
+  cart     Cart        @relation(fields: [cartId], references: [id])
+  status   OrderStatus @default(OPEN)
+  total    Float
+  payment  Json?
+  delivery Json?
+  comments String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @map("updated_at")
+
+  @@map("orders")
 }

@@ -9,7 +9,7 @@ export enum OrderStatus {
 
 type StatusHistory = Array<{
   status: OrderStatus;
-  timestamp: number;
+  timestamp: Date;
   comment: string;
 }>;
 
