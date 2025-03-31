@@ -19,9 +19,9 @@ export class OrderService {
       include: {
         cart: {
           include: {
-            cart_items: {
+            cartItems: {
               select: {
-                product_id: true,
+                productId: true,
                 count: true,
               },
             },
@@ -35,8 +35,8 @@ export class OrderService {
       userId: order.userId,
       cartId: order.userId,
       address: order.delivery as Address,
-      items: order.cart.cart_items.map((item) => ({
-        productId: item.product_id,
+      items: order.cart.cartItems.map((item) => ({
+        productId: item.productId,
         count: item.count,
       })),
       statusHistory: [
