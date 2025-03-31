@@ -1,50 +1,88 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Order } from '../models';
-import { CreateOrderPayload, OrderStatus } from '../type';
+import { Address, CreateOrderPayload, OrderStatus } from '../type';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class OrderService {
-  private orders: Record<string, Order> = {};
+  constructor(private prisma: PrismaService) {}
 
-  getAll() {
-    return Object.values(this.orders);
-  }
+  async getAll(userId: string): Promise<Order[]> {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        userId,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      include: {
+        cart: {
+          include: {
+            cart_items: {
+              select: {
+                product_id: true,
+                count: true,
+              },
+            },
+          },
+        },
+      },
+    });
 
-  findById(orderId: string): Order {
-    return this.orders[orderId];
-  }
-
-  create(data: CreateOrderPayload) {
-    const id = randomUUID() as string;
-    const order: Order = {
-      id,
-      ...data,
+    return orders.map((order) => ({
+      id: order.id,
+      userId: order.userId,
+      cartId: order.userId,
+      address: order.delivery as Address,
+      items: order.cart.cart_items.map((item) => ({
+        productId: item.product_id,
+        count: item.count,
+      })),
       statusHistory: [
         {
           comment: '',
           status: OrderStatus.Open,
-          timestamp: Date.now(),
+          timestamp: order.createdAt,
         },
       ],
-    };
-
-    this.orders[id] = order;
-
-    return order;
+    }));
   }
 
-  // TODO add  type
-  update(orderId: string, data: Order) {
-    const order = this.findById(orderId);
+  async create({
+    userId,
+    cartId,
+    total,
+    address,
+    items,
+  }: CreateOrderPayload): Promise<Order> {
+    const id = randomUUID() as string;
 
-    if (!order) {
-      throw new Error('Order does not exist.');
-    }
+    await this.prisma.order.create({
+      data: {
+        id,
+        userId,
+        cartId,
+        status: OrderStatus.Open,
+        total,
+        delivery: address,
+        comments: address.comment,
+      },
+    });
 
-    this.orders[orderId] = {
-      ...data,
-      id: orderId,
+    return {
+      id,
+      userId,
+      cartId,
+      address,
+      items,
+      statusHistory: [
+        {
+          comment: '',
+          status: OrderStatus.Open,
+          timestamp: new Date(),
+        },
+      ],
     };
   }
 }

@@ -15,14 +15,16 @@ import { Order, OrderService } from '../order';
 import { AppRequest, getUserIdFromRequest } from '../shared';
 import { calculateCartTotal } from './models-rules';
 import { CartService } from './services';
-import { CartItem } from './models';
-import { CreateOrderDto, PutCartPayload } from 'src/order/type';
+import { CartItem, CartStatuses } from './models';
+import { CreateOrderDto, PutCartPayload } from '../order/type';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('api/profile/cart')
 export class CartController {
   constructor(
     private cartService: CartService,
     private orderService: OrderService,
+    private prisma: PrismaService,
   ) {}
 
   // @UseGuards(JwtAuthGuard)
@@ -63,7 +65,10 @@ export class CartController {
   // @UseGuards(JwtAuthGuard)
   @UseGuards(BasicAuthGuard)
   @Put('order')
-  async checkout(@Req() req: AppRequest, @Body() body: CreateOrderDto) {
+  async checkout(
+    @Req() req: AppRequest,
+    @Body() body: CreateOrderDto,
+  ): Promise<{ order: Order }> {
     const userId = getUserIdFromRequest(req);
     const cart = await this.cartService.findByUserId(userId);
 
@@ -73,26 +78,35 @@ export class CartController {
 
     const { id: cartId, items } = cart;
     const total = calculateCartTotal(items);
-    const order = this.orderService.create({
-      userId,
-      cartId,
-      items: items.map(({ product, count }) => ({
-        productId: product.id,
-        count,
-      })),
-      address: body.address,
-      total,
-    });
-    this.cartService.removeByUserId(userId);
 
-    return {
-      order,
-    };
+    try {
+      const result = await this.prisma.$transaction(async () => {
+        const order = await this.orderService.create({
+          userId,
+          cartId,
+          items: items.map(({ product, count }) => ({
+            productId: product.id,
+            count,
+          })),
+          address: body.address,
+          total,
+        });
+
+        await this.cartService.updateStatus(cartId, CartStatuses.ORDERED);
+
+        return order;
+      });
+
+      return { order: result };
+    } catch (error) {
+      throw new BadRequestException('Failed to create order: ' + error.message);
+    }
   }
 
   @UseGuards(BasicAuthGuard)
   @Get('order')
-  getOrder(): Order[] {
-    return this.orderService.getAll();
+  async getOrder(@Req() req: AppRequest): Promise<Order[]> {
+    const userId = getUserIdFromRequest(req);
+    return this.orderService.getAll(userId);
   }
 }
