@@ -24,7 +24,7 @@
     "copy:prisma": "mkdir -p dist/node_modules/.prisma && cp -r node_modules/.prisma/client dist/node_modules/.prisma/",
     "copy:package": "cp package.json package-lock.json dist/",
     "cleanup:prisma": "find node_modules/.prisma/client -name '*.d.ts' -delete && rm -f node_modules/.prisma/client/libquery_engine-debian-* node_modules/.prisma/client/libquery_engine-darwin-* node_modules/.prisma/client/libquery_engine-windows-*",
-    "prepare:lambda": "npm run build && npm run prisma:generate && npm run prisma:deploy && npm run copy:package && npm run copy:prisma && cd dist && npm install --only=prod --no-package-lock && npm run cleanup:prisma",
+    "prepare:lambda": "npm run build && npm run prisma:generate && npm run prisma:deploy && npm run copy:package && npm run copy:prisma && cd dist && npm install --omit=dev && npm run cleanup:prisma",
     "deploy": "npm run prepare:lambda && cd cdk && npm run deploy"
   },
   "dependencies": {
