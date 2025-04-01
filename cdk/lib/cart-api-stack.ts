@@ -10,16 +10,27 @@ export class CartApiStack extends cdk.Stack {
   private api: apigateway.RestApi;
   private vpc: ec2.IVpc;
   private lambdaSG: ec2.SecurityGroup;
+  private swaggerUi: lambda.Function;
+  private sharedLayer: lambda.LayerVersion;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    this.createSharedLayer();
     this.importVpc();
     this.createSecurityGroup();
     this.allowLambdaAccessToRDS();
     this.createLambdaFunctions();
     this.createApiGateway();
     this.createOutputs();
+  }
+
+  private createSharedLayer(): void {
+    this.sharedLayer = new lambda.LayerVersion(this, 'NodeJsLayer', {
+      code: lambda.Code.fromAsset(path.join(__dirname, '../dist-cdk/layers')),
+      compatibleRuntimes: [lambda.Runtime.NODEJS_20_X],
+      description: 'Node.js dependencies layer',
+    });
   }
 
   private importVpc(): void {
@@ -64,8 +75,19 @@ export class CartApiStack extends cdk.Stack {
       environment: {
         DATABASE_URL: `postgresql://${process.env.RDS_USERNAME}:${process.env.RDS_PASSWORD}@${process.env.RDS_HOST}:${process.env.RDS_PORT}/${process.env.RDS_DATABASE}`,
         NODE_ENV: 'production',
+        PRODUCTS_API_URL: `${process.env.PRODUCTS_API_URL}`,
       },
       timeout: cdk.Duration.seconds(30),
+    });
+
+    // Create the Swagger UI Lambda function
+    this.swaggerUi = new lambda.Function(this, 'SwaggerUI', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handler.handler',
+      code: lambda.Code.fromAsset(
+        path.join(__dirname, '../dist-cdk/functions/swagger-ui'),
+      ),
+      layers: [this.sharedLayer],
     });
   }
 
@@ -76,6 +98,10 @@ export class CartApiStack extends cdk.Stack {
       defaultIntegration: new apigateway.LambdaIntegration(this.cartApiLambda),
       anyMethod: true,
     });
+
+    // Swagger UI endpoint
+    const docs = this.api.root.addResource('docs');
+    docs.addMethod('GET', new apigateway.LambdaIntegration(this.swaggerUi));
   }
 
   private createOutputs(): void {
@@ -87,6 +113,11 @@ export class CartApiStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ApiEndpoint', {
       value: `${this.api.url}ping`,
       description: 'Ping endpoint URL',
+    });
+
+    new cdk.CfnOutput(this, 'CartApiDocs', {
+      value: `${this.api.url}docs`,
+      description: 'Cart API documentation URL',
     });
   }
 }
