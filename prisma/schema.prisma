@@ -40,7 +40,7 @@ enum CartStatus {
 
 model TestConnection {
   id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@map("test_connections")
 }
