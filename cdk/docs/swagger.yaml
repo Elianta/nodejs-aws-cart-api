@@ -1,0 +1,368 @@
+openapi: 3.0.1
+info:
+  title: Cart Service API
+  version: 1.0.0
+  description: API for managing a shopping cart, ordering products, and handling user authentication.
+servers:
+  - url: https://qamr6xxqni.execute-api.eu-central-1.amazonaws.com/prod
+    description: Production server
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: Basic authentication using username and password encoded in base64
+  schemas:
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+          format: float
+      required:
+        - id
+        - title
+        - price
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        cartId:
+          type: string
+          format: uuid
+        address:
+          $ref: '#/components/schemas/OrderAddress'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        statusHistory:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderStatus'
+      required:
+        - id
+        - userId
+        - cartId
+        - address
+        - items
+        - statusHistory
+    OrderAddress:
+      type: object
+      properties:
+        address:
+          type: string
+        comment:
+          type: string
+        lastName:
+          type: string
+        firstName:
+          type: string
+      required:
+        - address
+        - lastName
+        - firstName
+    OrderItem:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+        count:
+          type: integer
+      required:
+        - productId
+        - count
+    OrderStatus:
+      type: object
+      properties:
+        comment:
+          type: string
+        status:
+          type: string
+          enum: [OPEN, APPROVED, CONFIRMED, SENT, COMPLETED, CANCELLED]
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - status
+        - timestamp
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+tags:
+  - name: auth
+    description: User authentication
+  - name: cart
+    description: Cart management
+  - name: order
+    description: Order management
+paths:
+  /ping:
+    get:
+      summary: Health check endpoint
+      description: Returns a 200 status code if the service is up and running
+      operationId: ping
+      responses:
+        '200':
+          description: Service is up and running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: number
+                    example: 200
+                  message:
+                    type: string
+                    example: 'OK'
+  /test-db:
+    get:
+      summary: Test DB connection
+      description: Attempts to insert a test record and returns DB connection status
+      responses:
+        '200':
+          description: Result of DB test connection
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: Connected successfully!
+                  testRecord:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      createdAt:
+                        type: string
+                        format: date-time
+        '500':
+          description: Failed DB connection
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: Connection failed
+                  error:
+                    type: string
+  /api/auth/register:
+    post:
+      tags: [auth]
+      summary: Register new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                password:
+                  type: string
+              required:
+                - name
+                - password
+      responses:
+        '201':
+          description: Registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId:
+                    type: string
+                    format: uuid
+
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+              required:
+                - username
+                - password
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token_type:
+                    type: string
+                    example: Basic
+                  access_token:
+                    type: string
+                    example: ZWxpYW50YTpURVNUX1BBU1NXT1JE
+  /api/profile:
+    get:
+      tags: [auth]
+      summary: User profile data
+      security:
+        - basicAuth: []
+      responses:
+        '200':
+          description: User data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+  /api/profile/cart:
+    get:
+      tags: [cart]
+      summary: Get cart
+      security:
+        - basicAuth: []
+      responses:
+        '200':
+          description: Current cart
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    product:
+                      $ref: '#/components/schemas/Product'
+                    count:
+                      type: integer
+        '401':
+          description: Unauthorized - Invalid credentials
+    put:
+      tags: [cart]
+      summary: Update cart
+      security:
+        - basicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                product:
+                  $ref: '#/components/schemas/Product'
+                count:
+                  type: integer
+              required: [product, count]
+      responses:
+        '200':
+          description: Cart update
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    product:
+                      $ref: '#/components/schemas/Product'
+                    count:
+                      type: integer
+        '401':
+          description: Unauthorized - Invalid credentials
+    delete:
+      tags: [cart]
+      summary: Delete cart
+      security:
+        - basicAuth: []
+      responses:
+        '200':
+          description: Cart cleared
+        '401':
+          description: Unauthorized - Invalid credentials
+  /api/profile/cart/order:
+    get:
+      tags: [order]
+      summary: Get current order
+      security:
+        - basicAuth: []
+      responses:
+        '200':
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+    put:
+      tags: [order]
+      summary: Place an order
+      security:
+        - basicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/OrderItem'
+                address:
+                  $ref: '#/components/schemas/OrderAddress'
+              required: [items, address]
+      responses:
+        '200':
+          description: Order placed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order:
+                    $ref: '#/components/schemas/Order'
