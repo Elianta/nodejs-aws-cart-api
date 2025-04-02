@@ -325,7 +325,7 @@ paths:
   /api/profile/cart/order:
     get:
       tags: [order]
-      summary: Get current order
+      summary: Get all orders
       security:
         - basicAuth: []
       responses:
@@ -337,6 +337,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Order'
+        '401':
+          description: Unauthorized - Invalid credentials
     put:
       tags: [order]
       summary: Place an order
@@ -366,3 +368,95 @@ paths:
                 properties:
                   order:
                     $ref: '#/components/schemas/Order'
+        '401':
+          description: Unauthorized - Invalid credentials
+  /api/profile/cart/order/{id}:
+    get:
+      tags: [order]
+      summary: Get order by ID
+      security:
+        - basicAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Order ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401':
+          description: Unauthorized - Invalid credentials
+        '403':
+          description: Forbidden - Access denied
+        '404':
+          description: Order not found
+    delete:
+      tags: [order]
+      summary: Delete order by ID
+      security:
+        - basicAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Order ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Order successfully deleted
+        '401':
+          description: Unauthorized - Invalid credentials
+        '403':
+          description: Forbidden - Access denied
+        '404':
+          description: Order not found
+  /api/profile/cart/order/{id}/status:
+    put:
+      tags: [order]
+      summary: Update order status
+      security:
+        - basicAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Order ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [OPEN, APPROVED, CONFIRMED, SENT, COMPLETED, CANCELLED]
+                comment:
+                  type: string
+              required:
+                - status
+      responses:
+        '200':
+          description: Order status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401':
+          description: Unauthorized - Invalid credentials
+        '403':
+          description: Forbidden - Access denied
+        '404':
+          description: Order not found
