@@ -7,7 +7,7 @@ export enum OrderStatus {
   Cancelled = 'CANCELLED',
 }
 
-type StatusHistory = Array<{
+export type StatusHistory = Array<{
   status: OrderStatus;
   timestamp: Date;
   comment: string;
@@ -39,4 +39,9 @@ export type CreateOrderPayload = {
   items: Array<{ productId: string; count: number }>;
   address: Address;
   total: number;
+};
+
+export type UpdateOrderStatusDto = {
+  status: OrderStatus;
+  comment: string;
 };

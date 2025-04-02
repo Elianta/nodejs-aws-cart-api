@@ -67,16 +67,28 @@ enum OrderStatus {
   @@map("order_status")
 }
 
+model OrderStatusHistory {
+  id        String   @id @default(uuid())
+  orderId   String   @map("order_id") @db.Uuid
+  status    String
+  comment   String
+  timestamp DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id])
+
+  @@map("order_status_history")
+}
+
 model Order {
-  id       String      @id @default(uuid()) @db.Uuid
-  userId   String      @map("user_id") @db.Uuid
-  cartId   String      @unique @map("cart_id") @db.Uuid
-  cart     Cart        @relation(fields: [cartId], references: [id])
-  status   OrderStatus @default(OPEN)
-  total    Float
-  payment  Json?
-  delivery Json?
-  comments String?
+  id            String               @id @default(uuid()) @db.Uuid
+  userId        String               @map("user_id") @db.Uuid
+  cartId        String               @unique @map("cart_id") @db.Uuid
+  cart          Cart                 @relation(fields: [cartId], references: [id])
+  status        OrderStatus          @default(OPEN)
+  total         Float
+  payment       Json?
+  delivery      Json?
+  comments      String?
+  statusHistory OrderStatusHistory[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @map("updated_at")
