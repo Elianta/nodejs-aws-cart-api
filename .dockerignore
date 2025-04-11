@@ -1,0 +1,51 @@
+# Exclude dependencies - will be reinstalled in container
+
+node_modules/
+
+# Exclude compiled JavaScript - will be rebuilt in container
+
+dist/
+
+# Exclude CDK build artifacts
+
+dist-cdk/
+
+# Exclude test coverage reports
+
+coverage/
+
+# Exclude git history
+
+.git/
+
+# Exclude GitHub specific files
+
+.github/
+
+# Exclude VS Code settings
+
+.vscode/
+
+# Exclude environment variables
+
+.env
+
+# Exclude npm cache
+
+.npm/
+
+# Exclude macOS system files
+
+.DS_Store
+
+# Exclude documentation files
+
+\*.md
+
+# Exclude test files for production
+
+test/
+
+# Exclude CDK infrastructure code
+
+cdk/
