@@ -2,13 +2,15 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as path from 'path';
 
 export class CartApiStack extends cdk.Stack {
-  private cartApiLambda: lambda.Function;
   private api: apigateway.RestApi;
   private swaggerUi: lambda.Function;
   private sharedLayer: lambda.LayerVersion;
+  private distribution: cloudfront.Distribution;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -16,6 +18,7 @@ export class CartApiStack extends cdk.Stack {
     this.createSharedLayer();
     this.createLambdaFunctions();
     this.createApiGateway();
+    this.createCloudFront();
     this.createOutputs();
   }
 
@@ -28,19 +31,6 @@ export class CartApiStack extends cdk.Stack {
   }
 
   private createLambdaFunctions(): void {
-    this.cartApiLambda = new lambda.Function(this, 'CartApiHandler', {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'lambda.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../dist'), {}),
-      environment: {
-        DATABASE_URL: `postgresql://${process.env.RDS_USERNAME}:${process.env.RDS_PASSWORD}@${process.env.RDS_HOST}:${process.env.RDS_PORT}/${process.env.RDS_DATABASE}`,
-        NODE_ENV: 'production',
-        PRODUCTS_API_URL: `${process.env.PRODUCTS_API_URL}`,
-      },
-      timeout: cdk.Duration.seconds(30),
-    });
-
-    // Create the Swagger UI Lambda function
     this.swaggerUi = new lambda.Function(this, 'SwaggerUI', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'handler.handler',
@@ -54,14 +44,44 @@ export class CartApiStack extends cdk.Stack {
   private createApiGateway(): void {
     this.api = new apigateway.RestApi(this, 'CartApi');
 
-    this.api.root.addProxy({
-      defaultIntegration: new apigateway.LambdaIntegration(this.cartApiLambda),
-      anyMethod: true,
-    });
-
     // Swagger UI endpoint
     const docs = this.api.root.addResource('docs');
     docs.addMethod('GET', new apigateway.LambdaIntegration(this.swaggerUi));
+  }
+
+  private createCloudFront(): void {
+    this.distribution = new cloudfront.Distribution(
+      this,
+      'CartApiDistribution',
+      {
+        defaultBehavior: {
+          origin: new origins.HttpOrigin(
+            process.env.CART_API_EB_URL as string,
+            {
+              protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
+              originSslProtocols: [cloudfront.OriginSslPolicy.TLS_V1_2],
+            },
+          ),
+          viewerProtocolPolicy:
+            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+          originRequestPolicy:
+            cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+        },
+        priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
+        enabled: true,
+      },
+    );
+
+    this.distribution.addBehavior(
+      '/docs',
+      new origins.RestApiOrigin(this.api),
+      {
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+      },
+    );
   }
 
   private createOutputs(): void {
@@ -78,6 +98,11 @@ export class CartApiStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'CartApiDocs', {
       value: `${this.api.url}docs`,
       description: 'Cart API documentation URL',
+    });
+
+    new cdk.CfnOutput(this, 'CloudFrontApiUrl', {
+      value: `https://${this.distribution.distributionDomainName}/`,
+      description: 'CloudFront API URL',
     });
   }
 }
