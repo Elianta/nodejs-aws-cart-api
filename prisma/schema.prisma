@@ -73,7 +73,7 @@ model OrderStatusHistory {
   status    String
   comment   String
   timestamp DateTime @default(now())
-  order     Order    @relation(fields: [orderId], references: [id])
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("order_status_history")
 }
